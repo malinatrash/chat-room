@@ -297,14 +297,19 @@
                 })
             }).then(response => {
                 if (response.ok) {
-                    document.getElementById('usernameModal').style.display = 'none';
-                    document.getElementById('chatContainer').classList.remove('hidden');
-                    connectSSE();
+                    return response.json();
                 } else if (response.status === 400) {
-                    showNotification('Username already taken', 'error');
+                    throw new Error('Username already taken');
                 } else {
-                    showNotification('Error joining chat', 'error');
+                    throw new Error('Error joining chat');
                 }
+            }).then(data => {
+                document.getElementById('usernameModal').style.display = 'none';
+                document.getElementById('chatContainer').classList.remove('hidden');
+                updateOnlineCount(data.userCount);
+                connectSSE();
+            }).catch(error => {
+                showNotification(error.message, 'error');
             });
         }
 
@@ -325,10 +330,10 @@
                     messages.insertAdjacentHTML('beforeend', messageHtml);
                     messages.scrollTop = messages.scrollHeight;
                 } else if (data.type === 'join') {
-                    showNotification(data.message, 'success');
+                    showNotification(`${data.data.username} joined the room!`, 'success');
                     updateOnlineCount(data.data.userCount);
                 } else if (data.type === 'leave') {
-                    showNotification(data.message, 'error');
+                    showNotification(`${data.data.username} left the room`, 'error');
                     updateOnlineCount(data.data.userCount);
                 }
             };
@@ -342,7 +347,9 @@
 
         function updateOnlineCount(count) {
             const countElement = document.querySelector('.online-count');
-            countElement.textContent = `${count} online`;
+            if (countElement) {
+                countElement.textContent = `${count} online`;
+            }
         }
 
         function showNotification(message, type) {
